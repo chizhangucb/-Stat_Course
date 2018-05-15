@@ -1,4 +1,4 @@
-Statistics Course Material 
+Statistics Course Materials
 
 1. Stat 215A 
 2. Stat 222 
