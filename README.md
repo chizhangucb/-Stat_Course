@@ -1,1 +1,1 @@
-Statistics Course Material
+Statistics Course Material (Forked from others' repositories)
