@@ -1,0 +1,55 @@
+\documentclass[11pt]{article}
+\usepackage{amsthm, amsmath, amssymb}
+\usepackage{mathrsfs, bm}
+\usepackage{graphicx, tabularx, float}
+\usepackage{hyperref}
+
+\title{Linear Regression}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Derived Distributions of OLS Estimates}
+\subsection{General Matrix Expression}
+$\bm{Y} = \bm{X\beta} + \bm{\epsilon}$, where $\bm{\epsilon} \overset{\mathrm{i.i.d}}{\sim}  Dist(\bm{0}_{n\time 1}, \sigma^2\bm{I}_{n \times n})$\\
+$\bm{\beta} = \bm{(X'X)^{-1}X'Y}$ \\
+$cov(\bm{\beta})= \sigma^2\bm{(X'X)^{-1}}$ \\
+$\bm{\beta} \sim Dist(\bm{\beta}, \sigma^2\bm{(X'X)^{-1}})$
+
+\subsection{When Errors are Normally Distributed}
+$Y_i = \beta_0 + \beta_1X_i + \epsilon_i$, where $\epsilon_i \overset{\mathrm{i.i.d}}{\sim}  N(0, \sigma^2)$ \\
+1. $\hat{\beta_1} = \frac{\sum\limits_{i=1}^n(X_i - \bar{X})(Y_i - \bar{Y})}{\sum\limits_{i=1}^n(X_i - \bar{X})^2} = \frac{\sum\limits_{i=1}^n(X_i - \bar{X})Y_i}{\sum\limits_{i=1}^n(X_i - \bar{X})^2} = \sum\limits_{i=1}^nW_iY_i$ (i.e., weighted sum), where \\
+$W_i = \frac{(X_i - \bar{X})}{\sum\limits_{i=1}^n(X_i - \bar{X})^2}$, so $\sum\limits_{i=1}^nW_i(X_i - \bar{X})= \sum\limits_{i=1}^n\frac{(X_i - \bar{X})^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2} = 1$, then 
+\begin{align*}
+\sum\limits_{i=1}^nW_iY_i & = \sum\limits_{i=1}^nW_i(\beta_0 + \beta_1X_i + \epsilon_i) = \sum\limits_{i=1}^nW_i(\bar{Y} - \beta_1\bar{X} - \bar{\epsilon} + \beta_1X_i + \epsilon_i) \\
+&= \bar{Y}\sum\limits_{i=1}^nW_i - \bar{\epsilon}\sum\limits_{i=1}^nW_i + \beta_1\sum\limits_{i=1}^nW_i(X_i - \bar{X}) + \sum\limits_{i=1}^nW_i\epsilon_i \\
+&= \bar{Y}\sum\limits_{i=1}^nW_i - 0 + \beta_1 + \sum\limits_{i=1}^nW_i\epsilon_i = \hat{\beta_1}
+\end{align*}
+
+$\hat{\beta_1} - \beta_1 = \text{constant} + \sum\limits_{i=1}^nW_i\epsilon_i$
+
+\begin{align*}
+Var(\hat{\beta_1}) &= E[(\hat{\beta_1} - \beta_1)^2] = E[(\sum\limits_{i=1}^nW_i\epsilon_i)^2] = E[\sum\limits_{i=1}^nW_i^2\epsilon_i^2 + \sum\limits_{i=1}^n\sum\limits_{j\neq i}^nW_iW_j\epsilon_i\epsilon_j] \\
+&= \sum\limits_{i=1}^nW_i^2E(\epsilon_i^2) + \sum\limits_{i=1}^n\sum\limits_{j\neq i}^nW_iW_jE(\epsilon_i\epsilon_j) = \sum\limits_{i=1}^nW_i^2E(\epsilon_i^2)\\
+&E(\epsilon_i\epsilon_j) = 0 \text{ due to the uncorrelation assumption between error pair} \\
+&= \sigma^2\sum\limits_{i=1}^n\frac{(X_i - \bar{X})^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^4} = \frac{\sigma^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2}
+\end{align*}
+\fbox{$\hat{\beta_1} \sim N(\beta_1, \frac{\sigma^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2})$} \\
+2. $\hat{\beta_0} = \bar{Y} - \hat{\beta_1}\bar{X}$ 
+
+\begin{align*}
+Var(\hat{\beta_0}) &= Var(\bar{Y} - \hat{\beta_1}\bar{X}) = Var(\frac{1}{n}\sum\limits_{i=1}^nY_i) + (\bar{X})^2Var(\hat{\beta_1}) \\
+&= \frac{1}{n^2}\sum\limits_{i=1}^nVar(\epsilon_i) + \frac{\sigma^2\bar{X}^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2} = \frac{\sigma^2}{n} + \frac{\sigma^2\bar{X}^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2}
+\end{align*}
+\fbox{$\hat{\beta_0} \sim N(\beta_0, \sigma^2(\frac{1}{n} + \frac{\bar{X}^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2}))$} \\
+3. $\hat{Y} = \hat{\beta_0} + \hat{\beta_1}X$ 
+\begin{align*}
+Var(\hat{Y}) &= Var(\hat{\beta_0} + \hat{\beta_1}X) = Var(\hat{\beta_0}) + X^2Var(\hat{\beta_1}) \\
+&= \sigma^2(\frac{1}{n} + \frac{\bar{X}^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2}) + X^2\frac{\sigma^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2} \\
+&= \sigma^2(\frac{1}{n} + \frac{(X - \bar{X})^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2})
+\end{align*}
+\fbox{$\hat{Y} \sim N(\beta_0 + \beta_1X, \sigma^2(\frac{1}{n} + \frac{(X - \bar{X})^2}{\sum\limits_{i=1}^n(X_i - \bar{X})^2}))$}
+
+
+\end{document}
