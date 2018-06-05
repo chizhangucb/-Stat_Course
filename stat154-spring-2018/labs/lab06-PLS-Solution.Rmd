@@ -1,0 +1,88 @@
+---
+title: "lab 06 PLS Solution"
+output: pdf_document
+---
+  
+  ```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Partial Least Squares Regression (PLS)
+
+## Load data & remove NA
+
+```{r Hitters data}
+library(ISLR)
+library(pls)
+str(Hitters, vec.len = 1)
+Hitters <- na.omit(Hitters)
+Hitters_mat <- model.matrix(Salary ~ ., Hitters)
+X <- scale(Hitters_mat[, -1], center = T, scale = T)
+Y <- scale(Hitters$Salary, center = T, scale = T)
+rankX <- qr(X)$rank
+# alternatice way
+# require(Matrix); rankMatrix(X)[1]
+```
+
+## partial least squares regression (without CV)
+```{r pls fit}
+pls_fit <- plsr(Salary ~ ., data = Hitters, scale = TRUE, validation = "none") 
+names(pls_fit)
+```
+
+## 3.1) First iteration in PLSR
+
+```{r First iteration in PLSR}
+X0 <- X; Y0 <- Y
+scalar1 <- function(x) {x / sqrt(sum(x^2))}  # normalize
+(w1 <- scalar1(t(X0) %*% Y0))
+
+# Obtain the first PLS component
+z1 <- X0 %*% w1
+head(z1)
+
+# Obtain a vector p1 of loadings
+(p1 <- t(X0) %*% z1 / as.numeric(t(z1) %*% z1))
+
+# Comparison
+all.equal(as.numeric(pls_fit$loading.weights[,1]), as.numeric(w1))
+all.equal(as.numeric(pls_fit$scores[, 1]), as.numeric(z1))
+all.equal(as.numeric(pls_fit$loadings[, 1]), as.numeric(p1))
+
+# Obtain regression coefficient d1
+(b1 <- t(Y0) %*% z1 / as.numeric(t(z1) %*% z1))
+yhat <- z1 %*% b1
+# Convert back to original scale
+yhat_org <- mean(Hitters$Salary) + sd(Hitters$Salary) * yhat
+all.equal(as.numeric(pls_fit$fitted.values[, , 1]), as.numeric(yhat_org))
+```
+
+## 3.2) Implement the PLSR algorithm
+
+```{r the PLSR algorithm}
+weights <- loadings <- matrix(NA, nrow = NCOL(X), ncol = rankX)
+components <-  matrix(NA, nrow = NROW(X), ncol = rankX)
+coefficients <- rep(NA, rankX)
+fitted <- fitted_org <- rep(0, NCOL(X))
+colnames(weights) <- colnames(loadings) <- colnames(components) <- colnames(X)
+X_temp <- X; Y_temp <- Y
+
+for (h in 1:rankX) {
+  w <- scalar1(t(X_temp) %*% Y_temp)
+  z <- X_temp %*% w
+  p <- t(X_temp) %*% z / as.numeric(t(z) %*% z)
+  b <- t(Y_temp) %*% z / as.numeric(t(z) %*% z)
+  yhat <- z %*% b
+  weights[, h] <- w
+  components[, h] <- z
+  loadings[, h] <- p
+  coefficients[h] <- b
+  fitted <- yhat + fitted
+  
+  # Iterative steps
+  X_temp <- X_temp - z %*% t(p)
+  Y_temp <- Y_temp - z %*% b
+}
+fitted_org <- mean(Hitters$Salary) + sd(Hitters$Salary) * fitted
+all.equal(as.numeric(pls_fit$fitted.values[, , 19]), as.numeric(fitted_org))
+```
