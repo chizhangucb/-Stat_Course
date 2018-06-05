@@ -1,0 +1,200 @@
+---
+title: "Lecture 19 PLS Simulation"
+header-includes:
+   - \usepackage{amsmath}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load dataset
+
+```{r cars}
+cars2004 <- read.csv('../data/cars2004.csv', stringsAsFactors = F)
+cars2004 <- cars2004[, -1]
+str(cars2004, vec.len = 1)
+```
+
+## Obtain the vector of weights
+
+$\mathbf{w_1} = \mathbf{X_0^Ty} \propto cov(\mathbf{X_0}, \mathbf{y})$
+
+If normalizing $\mathbf{w_1}$, then $w_{1j} = \frac{cov(\mathbf{x_{0,j}}, \mathbf{y})}{\sum_{j=1}^pcov^2(\mathbf{x_{0,j}}, \mathbf{y})}$
+
+```{r vector of weights, echo=T}
+# Centralized X and Y, but not scaled
+X0 <- scale(cars2004[, -1], center = T, scale = F)
+Y0 <- scale(cars2004[, 1], center = T, scale = F)
+w1 <- t(X0) %*% Y0
+scalar1 <- function(x) {x / sqrt(sum(x^2))}  # normalize
+(w1 <- scalar1(w1))
+sum(scalar1(w1)^2)  # 1
+unique(round(w1 / cov(X0, Y0)))  # prop to covariance matrix
+# Alternative ways to calculate scaled W1 
+# w1 <- cov(X0, Y0) / sqrt(sum(cov(X0, Y0)^2))
+# w1 <- scalar1(xt(X0) %*% Y0 / as.numeric(t(Y0) %*% Y0))
+```
+
+## Obtain the first PLS component
+
+$\mathbf{z_1} = \mathbf{X_0w_1}$
+
+Since $\mathbf{X} = \mathbf{ZP^T} + \mathbf{E}$, so $\mathbf{P^T} = \mathbf{(Z^TZ)^{-1}Z^TX}$ and so $\mathbf{P_1} = \mathbf{X_0^Tz_1} / \mathbf{z_1^Tz_1}$
+
+Since $\mathbf{y} = \mathbf{Zd} + \mathbf{e}$, so $\mathbf{d} = \mathbf{(Z^TZ)^{-1}Z^TY}$ and so $d_1 = \mathbf{Y_0^Tz_1} / \mathbf{z_1^Tz_1}$
+
+```{r first PLS components, echo=T}
+# Obtain the first PLS component
+z1 <- X0 %*% w1
+head(z1)
+
+# Obtain a vector p1 of loadings
+(p1 <- t(X0) %*% z1 / as.numeric(t(z1) %*% z1))
+# p1 = (z1tz1)^{-1}(z1tX0)
+p1t <- solve(t(z1) %*% z1) %*% t(z1) %*% X0
+
+# Obtain regression coefficient d1
+(d1 <- t(Y0) %*% z1 / as.numeric(t(z1) %*% z1))
+yhat <- z1 %*% d1
+```
+
+## Obtain the second PLS component
+
+```{r second PLS components, echo=T}
+# Deflate each xj w.r.t. z1
+X1 <- X0 - z1 %*% t(p1)
+
+# Deflate y0 w.r.t. z1 
+Y1 <- Y0 - z1 %*% d1
+
+# Obtain the vector of weights
+(w2 <- scalar1(t(X1) %*% Y1))
+
+# Obtain the second PLS component
+z2 <- X1 %*% w2
+head(z2)
+
+# Obtain a vector p2 of loadings
+(p2 <- t(X1) %*% z2 / as.numeric(t(z2) %*% z2))
+# p2 = (z2tz2)^{-1}(z2tX1)
+p2t <- solve(t(z2) %*% z2) %*% t(z2) %*% X1
+
+# Obtain regression coefficient d2
+(d2 <- t(Y1) %*% z2 / as.numeric(t(z2) %*% z2))
+yhat <- z1 %*% d1 + z2 %*% d2
+```
+
+## Obtain the third PLS component
+
+```{r third PLS components, echo=T}
+# Deflate each xj w.r.t. z2
+X2 <- X1 - z2 %*% t(p2)
+
+# Deflate y0 w.r.t. z2
+Y2 <- Y1 - z2 %*% d2
+
+# Obtain the vector of weights
+(w3 <- scalar1(t(X2) %*% Y2))
+
+# Obtain the second PLS component
+z3 <- X2 %*% w3
+head(z3)
+
+# Obtain a vector p3 of loadings
+(p3 <- t(X2) %*% z3 / as.numeric(t(z3) %*% z3))
+
+# Obtain regression coefficient d3
+(d3 <- t(Y2) %*% z3 / as.numeric(t(z3) %*% z3))
+yhat <- z1 %*% d1 + z2 %*% d2 + z3 %*% d3
+```
+
+## Propoerties 
+
+```{r properties, echo=T}
+t(z1) %*% z2 < 1e-7
+t(w1) %*% p1
+sum(t(w1) %*% t(X2) > 1e-7)
+```
+
+## Modified Weights 
+
+```{r Modified Weights, echo=T}
+w1_star <- w1 %*% solve(t(p1) %*% w1)
+w2_star <- w2 %*% solve(t(p2) %*% w2)
+z1_alt <- X0 %*% w1_star
+z2_alt <- X1 %*% w2_star
+head(cbind(z1, z1_alt, z2, z2_alt))
+```
+
+## Decomposition
+
+```{r Decomposition, echo=T}
+betaOLS <- solve(t(X0) %*% X0) %*% t(X0) %*% Y0
+# Suppose to show betaOLS = sum(d %*% w_star)
+```
+
+## Gasoline Data
+
+### Preliminary Analysis
+```{r Gasoline EDA, echo=T}
+gasoline <- read.table("../data/gasoline.txt", header = TRUE)
+dim(gasoline)
+
+# Circle of correlations
+library(factoextra)
+library("FactoMineR")
+gasoline.pca <- PCA(gasoline, ncp = NCOL(gasoline), graph = FALSE)
+# scores <- cars2004.pca$ind$coord
+fviz_pca_var(gasoline.pca, col.var = "black")
+```
+
+```{r Gasoline PLS, echo=T}
+octane <- gasoline[, 1]  # response
+NIR <- gasoline[, 2 : ncol(gasoline)]  # predictors
+
+# training and test sets
+train <- 1:50
+test <- 51:60
+
+corrs <- cor(NIR, octane)
+summary(corrs)
+which.max(corrs)
+corrs[which.max(corrs)]
+
+ggplot(gasoline, aes(x=NIR.1150.nm, y=octane)) + geom_point(size=2) + 
+  labs(title = "Scatterplot of Octane with most correlated predictor") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### OLS Regression analysis
+
+```{r OLS regression, echo=T}
+# OLS regression attempt
+gas_train <- gasoline[train, ]
+gas_test <- gasoline[test, ]
+reg <- lm(octane ~ ., data = gas_train)
+# print(summary(reg))
+```
+
+### PLS Regression analysis
+
+```{r PLS regression, echo=T}
+library(pls)
+set.seed(1)
+pls1 <- plsr(octane ~ ., ncomp = 10, data = gasoline, subset = train,
+             scale = TRUE, validation = "LOO")
+pls1
+summary(pls1)
+plot(MSEP(pls1), legendpos = "topright")
+
+# Test MSEs
+mse_test <- MSEP(pls1, newdata = gas_test)
+# RMSEP(pls1, newdata = gas_test)
+
+pls_fit <- plsr(octane ~ ., ncomp = 4, data = gasoline, scale = T)
+summary(pls_fit)
+plot(pls_fit, ncomp = 4, asp = 1, line = TRUE, 
+     main = "Observed and predicted values (4 PLS comps)")
+```
